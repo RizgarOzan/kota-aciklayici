@@ -1,0 +1,13 @@
+[project]
+name = "kota-aciklayici"
+version = "0.1.0"
+description = "Explain where your Claude Code and Codex token usage went, from local logs"
+requires-python = ">=3.11"
+license = "MIT"
+
+[project.scripts]
+kota = "kota.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
