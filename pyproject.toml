@@ -2,8 +2,13 @@
 name = "kota-aciklayici"
 version = "0.1.0"
 description = "Explain where your Claude Code and Codex token usage went, from local logs"
+readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+authors = [{ name = "Rızgar Ozan" }]
+
+[project.urls]
+Repository = "https://github.com/RizgarOzan/kota-aciklayici"
 
 [project.scripts]
 kota = "kota.cli:main"
