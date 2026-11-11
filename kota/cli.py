@@ -262,12 +262,13 @@ def main(argv=None):
     ap.add_argument("--top", type=int, default=5)
     ap.add_argument("--claude-dir", type=Path, default=Path.home() / ".claude" / "projects")
     ap.add_argument("--codex-dir", type=Path, default=Path.home() / ".codex" / "sessions")
+    ap.add_argument("--tool", choices=("claude", "codex"), help="scan only Claude Code or only Codex (default: both)")
     a = ap.parse_args(argv)
 
     events = []
-    if a.claude_dir.is_dir():
+    if a.tool != "codex" and a.claude_dir.is_dir():
         events += scan_claude(a.claude_dir, a.since)
-    if a.codex_dir.is_dir():
+    if a.tool != "claude" and a.codex_dir.is_dir():
         events += scan_codex(a.codex_dir, a.since)
     if not events:
         print("no usage found", file=sys.stderr)

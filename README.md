@@ -10,7 +10,7 @@ I wrote it because I kept hitting my weekly limit and couldn't tell which sessio
 - Counts each billed assistant message once (Claude Code writes the same usage on several streamed lines).
 - Splits usage by project, by session, and by subagent type (Explore, general-purpose, your own agents).
 - Lists the 5 most expensive sessions and single messages with a one-line reason, like "55% re-reading a long context every turn (347 turns, avg 127,158 cached tokens/turn)" or "100% writing large prompts to the 1h cache".
-- `--since 5h` / `--since 7d` / `--since 30m`, `--json`, `--top N`.
+- `--since 5h` / `--since 7d` / `--since 30m`, `--json`, `--top N`, `--tool claude` / `--tool codex` to scan only one of them.
 
 No dependencies, Python 3.11+. Nothing leaves your machine.
 
