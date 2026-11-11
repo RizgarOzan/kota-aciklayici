@@ -10,7 +10,7 @@ I wrote it because I kept hitting my weekly limit and couldn't tell which sessio
 - Counts each billed assistant message once (Claude Code writes the same usage on several streamed lines).
 - Splits usage by project, by session, and by subagent type (Explore, general-purpose, your own agents).
 - Lists the 5 most expensive sessions and single messages with a one-line reason, like "55% re-reading a long context every turn (347 turns, avg 127,158 cached tokens/turn)" or "100% writing large prompts to the 1h cache".
-- `--since 5h` / `--since 7d` / `--since 30m`, `--json`, `--top N`.
+- `--since 5h` / `--since 7d` / `--since 30m`, `--json`, `--csv`, `--top N`.
 
 No dependencies, Python 3.11+. Nothing leaves your machine.
 
@@ -18,9 +18,17 @@ No dependencies, Python 3.11+. Nothing leaves your machine.
 pip install .
 kota --since 7d
 kota --since 5h --json
+kota --since 7d --csv --top 10 > sessions.csv
 ```
 
 Or without installing: `python -m kota --since 7d`.
+
+`--csv` exports the top session table as UTF-8 CSV with a header row. `--top`
+limits its rows, and `--csv` cannot be combined with `--json`. Columns are
+`session`, `project`, `tool`, `weighted`, `share`, `input`, `cache_write_5m`,
+`cache_write_1h`, `cache_read`, `output`, and `why`. `session` is the existing
+report's `name`; all values come directly from the report. Cache writes stay
+separate, and `share` is the existing fraction (for example `0.25`, not `25%`).
 
 ## What it looked like on my machine
 
