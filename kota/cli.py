@@ -1,6 +1,7 @@
 """Explain where your Claude Code / Codex token usage went, from local logs."""
 
 import argparse
+import csv
 import json
 import os
 import re
@@ -255,10 +256,24 @@ def print_text(r: dict):
         print(f"          why: {e['why']}")
 
 
+def print_csv(report: dict):
+    """Export session rows with their existing raw values, without new arithmetic."""
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", newline="")
+    fields = ("session", "project", "tool", "weighted", "share", "input",
+              "cache_write_5m", "cache_write_1h", "cache_read", "output", "why")
+    writer = csv.DictWriter(sys.stdout, fieldnames=fields, extrasaction="ignore")
+    writer.writeheader()
+    for session in report["top_sessions"]:
+        writer.writerow({**session, "session": session["name"]})
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="kota", description=__doc__)
     ap.add_argument("--since", type=parse_since, help="only the last N minutes/hours/days: 30m, 5h, 7d")
-    ap.add_argument("--json", action="store_true", help="machine-readable output")
+    output = ap.add_mutually_exclusive_group()
+    output.add_argument("--json", action="store_true", help="machine-readable output")
+    output.add_argument("--csv", action="store_true", help="export the session table as UTF-8 CSV")
     ap.add_argument("--top", type=int, default=5)
     ap.add_argument("--claude-dir", type=Path, default=Path.home() / ".claude" / "projects")
     ap.add_argument("--codex-dir", type=Path, default=Path.home() / ".codex" / "sessions")
@@ -277,6 +292,8 @@ def main(argv=None):
     if a.json:
         json.dump(r, sys.stdout, indent=2, ensure_ascii=False)
         print()
+    elif a.csv:
+        print_csv(r)
     else:
         print_text(r)
     return 0

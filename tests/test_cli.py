@@ -1,4 +1,10 @@
+import csv
+import io
 import json
+import os
+import subprocess
+import sys
+import pytest
 from datetime import datetime, timedelta, timezone
 
 from kota.cli import build_report, main, parse_since, scan_claude, scan_codex
@@ -116,3 +122,80 @@ def test_tool_flag_scans_only_that_tool(tmp_path, capsys):
     assert main(["--json", *dirs]) == 0
     out = json.loads(capsys.readouterr().out)
     assert {s["tool"] for s in out["top_sessions"]} == {"claude", "codex"}
+
+
+def test_cli_csv_preserves_report_values_and_top(tmp_path, capsys):
+    make_claude(tmp_path)
+    assert main(["--csv", "--since", "5h", "--top", "1",
+                 "--claude-dir", str(tmp_path), "--codex-dir", str(tmp_path / "none")]) == 0
+    output = capsys.readouterr()
+    assert output.err == ""
+    reader = csv.DictReader(io.StringIO(output.out))
+    assert reader.fieldnames == ["session", "project", "tool", "weighted", "share",
+                                 "input", "cache_write_5m", "cache_write_1h",
+                                 "cache_read", "output", "why"]
+    rows = list(reader)
+    expected = build_report(list(scan_claude(tmp_path, parse_since("5h"))), 1)["top_sessions"][0]
+    assert len(rows) == 1
+    assert rows[0] == {key: str(expected["name" if key == "session" else key])
+                       for key in reader.fieldnames}
+
+
+def test_cli_csv_quotes_unicode_commas_and_newlines(tmp_path, capsys):
+    row = assistant("csv", 1, session='工作階段,"quoted"\nnext')
+    row["cwd"] = '/work/專案,"demo"'
+    write(tmp_path / "project" / "fixture.jsonl", [row])
+    assert main(["--csv", "--claude-dir", str(tmp_path),
+                 "--codex-dir", str(tmp_path / "none")]) == 0
+    rows = list(csv.DictReader(io.StringIO(capsys.readouterr().out)))
+    assert len(rows) == 1
+    assert rows[0]["session"] == '工作階段,"quoted"\nnext'
+    assert rows[0]["project"] == '專案,"demo"'
+
+
+def test_cli_csv_and_json_are_mutually_exclusive(tmp_path, capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--csv", "--json", "--claude-dir", str(tmp_path),
+              "--codex-dir", str(tmp_path)])
+    assert exc.value.code == 2
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "not allowed with argument" in output.err
+
+
+def test_cli_csv_empty_input_keeps_existing_error(tmp_path, capsys):
+    assert main(["--csv", "--claude-dir", str(tmp_path),
+                 "--codex-dir", str(tmp_path / "none")]) == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == "no usage found\n"
+
+
+def test_cli_default_text_output_is_preserved(tmp_path, capsys):
+    make_claude(tmp_path)
+    assert main(["--claude-dir", str(tmp_path), "--codex-dir", str(tmp_path / "none")]) == 0
+    output = capsys.readouterr().out
+    assert "billed messages" in output
+    assert "Most expensive sessions:" in output
+
+
+def test_cli_csv_top_zero_has_header_only(tmp_path, capsys):
+    make_claude(tmp_path)
+    assert main(["--csv", "--top", "0", "--claude-dir", str(tmp_path),
+                 "--codex-dir", str(tmp_path / "none")]) == 0
+    reader = csv.DictReader(io.StringIO(capsys.readouterr().out))
+    assert reader.fieldnames[0] == "session"
+    assert list(reader) == []
+
+
+def test_cli_csv_redirect_is_utf8_without_blank_windows_rows(tmp_path):
+    write(tmp_path / "project" / "fixture.jsonl", [assistant("utf8", 1, session="工作階段")])
+    result = subprocess.run(
+        [sys.executable, "-m", "kota", "--csv", "--claude-dir", str(tmp_path),
+         "--codex-dir", str(tmp_path / "none")], capture_output=True,
+        env={**os.environ, "PYTHONIOENCODING": "ascii", "PYTHONUTF8": "0"},
+    )
+    assert result.returncode == 0, result.stderr
+    assert b"\r\r\n" not in result.stdout
+    rows = list(csv.DictReader(io.StringIO(result.stdout.decode("utf-8"))))
+    assert rows[0]["session"] == "工作階段"
