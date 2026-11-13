@@ -72,6 +72,12 @@ This tool is narrower. It cares about the "why": subagent share broken down by a
 - Projects are grouped by the folder name the session ran in. Two folders with the same name merge, and a repo opened from a subfolder shows up as two rows.
 - On a few GB of logs a full scan takes a few minutes. `--since` skips files not modified since the cutoff, so recent windows are fast.
 
+## Contributing
+
+Small PRs are welcome. Issues labeled [good first issue](https://github.com/RizgarOzan/kota-aciklayici/labels/good%20first%20issue) say which function to touch and when they're done. If you use Codex, [#4](https://github.com/RizgarOzan/kota-aciklayici/issues/4) needs you most. Run `python -m pytest -q` before opening a PR; there are no dependencies to install.
+
+Thanks to [@chaser940428-pixel](https://github.com/chaser940428-pixel) for `--csv` ([#5](https://github.com/RizgarOzan/kota-aciklayici/pull/5)) and [@mentallyunstable-lab](https://github.com/mentallyunstable-lab) for `--tool` ([#7](https://github.com/RizgarOzan/kota-aciklayici/pull/7)).
+
 ## License
 
 MIT
