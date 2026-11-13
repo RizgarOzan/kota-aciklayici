@@ -69,14 +69,20 @@ def test_report_shares_and_why(tmp_path):
     assert "cached tokens/turn" in r["top_events"][1]["why"]
 
 
-def test_codex_running_totals_become_deltas(tmp_path):
-    def tc(hours_ago, inp, cached, out):
-        return {"type": "event_msg", "timestamp": ts(hours_ago), "payload": {
-            "type": "token_count", "info": {"total_token_usage": {
-                "input_tokens": inp, "cached_input_tokens": cached, "output_tokens": out}}}}
-    write(tmp_path / "2026" / "11" / "01" / "rollout-a.jsonl",
+def tc(hours_ago, inp, cached, out):
+    return {"type": "event_msg", "timestamp": ts(hours_ago), "payload": {
+        "type": "token_count", "info": {"total_token_usage": {
+            "input_tokens": inp, "cached_input_tokens": cached, "output_tokens": out}}}}
+
+
+def make_codex(root):
+    write(root / "2026" / "11" / "01" / "rollout-a.jsonl",
           [{"type": "session_meta", "payload": {"cwd": "/w/repo"}},
            tc(2, 1000, 0, 100), tc(2, 1000, 0, 100), tc(1, 3000, 1500, 300)])
+
+
+def test_codex_running_totals_become_deltas(tmp_path):
+    make_codex(tmp_path)
     ev = list(scan_codex(tmp_path, None))
     assert [e["tokens"] for e in ev] == [
         {"input": 1000, "cache_write_5m": 0, "cache_write_1h": 0, "cache_read": 0, "output": 100},
@@ -96,6 +102,26 @@ def test_cli_json_and_bad_since(tmp_path, capsys):
         assert "bad --since" in str(e)
     else:
         raise AssertionError("expected error")
+
+
+def test_tool_flag_scans_only_that_tool(tmp_path, capsys):
+    make_claude(tmp_path / "claude")
+    make_codex(tmp_path / "codex")
+    dirs = ["--claude-dir", str(tmp_path / "claude"), "--codex-dir", str(tmp_path / "codex")]
+
+    assert main(["--json", "--tool", "codex", *dirs]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["events"] == len(list(scan_codex(tmp_path / "codex", None)))
+    assert {s["tool"] for s in out["top_sessions"]} == {"codex"}
+
+    assert main(["--json", "--tool", "claude", *dirs]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["events"] == len(list(scan_claude(tmp_path / "claude", None)))
+    assert {s["tool"] for s in out["top_sessions"]} == {"claude"}
+
+    assert main(["--json", *dirs]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert {s["tool"] for s in out["top_sessions"]} == {"claude", "codex"}
 
 
 def test_cli_csv_preserves_report_values_and_top(tmp_path, capsys):
